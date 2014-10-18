@@ -1,7 +1,7 @@
 export
   ispos, isneg, iszero, isone, complement, comp, constantly,
   inc, dec, juxt, iterate, mapcat, lmap, lfilter, lmapcat, ltake, ldrop,
-  partition, partitionall, interleave, linterleave, separate, splitat
+  partition, partitionall, interleave, separate, splitat
 
 ispos(x::Number) = x > 0
 @vectorize_1arg Number ispos
@@ -9,10 +9,10 @@ ispos(x::Number) = x > 0
 isneg(x::Number) = x < 0
 @vectorize_1arg Number isneg
 
-iszero(x::Number) = x == zero(x)
+iszero(x::Number) = x == 0
 @vectorize_1arg Number iszero
 
-isone(x::Number) = x == one(x)
+isone(x::Number) = x == 1
 @vectorize_1arg Number isone
 
 complement(f::Function) = (xs...) -> !f(xs...)
@@ -121,7 +121,6 @@ lmapcat(f::Function, its...) = lconcat(lmap(f, its...)...)
 
 function ltake(n::Integer, it)
   n < 0 && error("n cannot be negative.")
-  !applicable(start, it) && error("it must an iterator.")
   TakeIterator(n, it)
 end
 
@@ -135,4 +134,91 @@ Base.done(it::TakeIterator, state::(Integer,Any)) =
 function Base.next(it::TakeIterator, state::(Integer,Any))
   v, s = next(it.it, state[2])
   (v, (inc(state[1]), s))
+end
+Base.length(it::TakeIterator) = it.n
+
+function ldrop(n::Integer, it)
+  n < 0 && error("n cannot be negative.")
+  DropIterator(n, it)
+end
+
+immutable DropIterator
+  n::Integer
+  it
+end
+function Base.start(it::DropIterator)
+  state = start(it.it)
+  for i in 1:it.n
+    if !done(it.it, state)
+      _, state = next(it.it, state)
+    end
+  end
+  state
+end
+Base.done(it::DropIterator, state) = done(it.it, state)
+Base.next(it::DropIterator, state) = next(it.it, state)
+
+function partition{T}(n::Integer, x::AbstractArray{T,1})
+  n < 0 && error("n cannot be negative.")
+  [x[(1:n)+((i-1)*n)] for i in 1:div(length(x), n)]
+end
+
+partition(n::Integer, it) = PartitionIterator(n, it)
+
+immutable PartitionIterator
+  n::Integer
+  it
+end
+Base.start(it::PartitionIterator) = (cell(it.n), ref(start(it.it)))
+function Base.done(it::PartitionIterator, state::(Vector{Any},Ref))
+  value, state = state
+  s = deref(state)
+  for i in 1:it.n
+    if done(it.it, s)
+      return true
+    end
+    v, s = next(it.it, s)
+    value[i] = v
+  end
+  set!(state, s)
+  return false
+end
+function Base.next(it::PartitionIterator, state::(Vector{Any},Ref))
+  value, state = state
+  (value, (cell(it.n), state))
+end
+
+function partitionall{T}(n::Integer, x::AbstractArray{T,1})
+  n < 0 && error("n cannot be negative.")
+  res = Array(typeof(x), iceil(length(x)/n))
+  psize = div(length(x), n)
+  for i in 1:psize
+    res[i] = x[(1:n)+((i-1)*n)]
+  end
+  res[end] = x[n*psize+1:end]
+  res
+end
+
+partitionall(n::Integer, it) = PartitionAllIterator(n, it)
+
+immutable PartitionAllIterator
+  n::Integer
+  it
+end
+function Base.start(it::PartitionAllIterator)
+  state = start(it.it)
+  (done(it.it, state), state)
+end
+Base.done(it::PartitionAllIterator, state::(Bool,Any)) = state[1]
+function Base.next(it::PartitionAllIterator, state::(Bool,Any))
+  value = Any[]
+  _, state = state
+  for i in 1:it.n
+    v, state = next(it.it, state)
+    push!(value, v)
+    if done(it.it, state)
+      return (value, (true, state))
+    end
+  end
+  (value, (false, state))
 end
