@@ -222,3 +222,43 @@ function Base.next(it::PartitionAllIterator, state::(Bool,Any))
   end
   (value, (false, state))
 end
+
+interleave{T}(c::Vector{T}) = c
+function interleave{T}(cs::Vector{T}...)
+  count = length(cs)
+  minlen = minimum(map(length, cs))
+  res = Array(T, count * minlen)
+  for vind in 0:minlen-1
+    for cind in 1:count
+      res[vind*count+cind] = cs[cind][vind+1]
+    end
+  end
+  res
+end
+interleave(it) = it
+interleave(its...) = InterleaveIterator(its)
+
+immutable InterleaveIterator
+  its
+end
+Base.start(it::InterleaveIterator) =
+  [:cind=>0, :donecheck=>true, :cstates=>map(start, [it.its...])]
+function Base.done(it::InterleaveIterator, state::Dict{Symbol,Any})
+  if state[:donecheck]
+    state[:donecheck] = false
+    reduce(+, map(done, it.its, state[:cstates])) > 0
+  else
+    false
+  end
+end
+function Base.next(it::InterleaveIterator, state::Dict{Symbol,Any})
+  i = state[:cind] + 1
+  v, cstate = next(it.its[i], state[:cstates][i])
+  ncind = i % length(it.its)
+  if ncind == 0
+    state[:donecheck] = true
+  end
+  state[:cind] = ncind
+  state[:cstates][i] = cstate
+  (v, state)
+end
