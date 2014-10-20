@@ -83,15 +83,21 @@ immutable FilterIterator
   pred::Function
   it
 end
-Base.start(it::FilterIterator) = start(it.it)
-Base.done(it::FilterIterator, state) = done(it.it, state)
-function Base.next(it::FilterIterator, state)
-  v, s = next(it.it, state)
-  while !it.pred(v)
+Base.start(it::FilterIterator) =
+  (Symbol=>Any)[:value=>nothing, :state=>start(it.it)]
+function Base.done(it::FilterIterator, state::Dict{Symbol,Any})
+  s = state[:state]
+  while !done(it.it, s)
     v, s = next(it.it, s)
+    if it.pred(v)
+      state[:value] = v
+      state[:state] = s
+      return false
+    end
   end
-  v, s
+  true
 end
+Base.next(it::FilterIterator, state::Dict{Symbol,Any}) = (state[:value], state)
 
 lconcat(its...) = ConcatIterator(its)
 
@@ -261,4 +267,17 @@ function Base.next(it::InterleaveIterator, state::Dict{Symbol,Any})
   state[:cind] = ncind
   state[:cstates][i] = cstate
   (v, state)
+end
+
+function separate{T}(n::Integer, arr::AbstractArray{T})
+  map(1:n) do i
+    arr[Bool[(ind-1)%n == (i-1) for ind in 1:endof(arr)]]
+  end
+end
+function separate(n::Integer, it)
+  map(1:n) do i
+    enumerate(it) |>
+    (c -> lfilter(arg -> (arg[1]-1) % n == (i-1), c)) |>
+    (c -> lmap(x -> x[2], c))
+  end
 end
