@@ -1,7 +1,7 @@
 export
   is_pos, is_neg, is_zero, is_one, complement, comp, constantly,
   inc, dec, juxt, iterate, mapcat, lmap, lfilter, lconcat, lmapcat, ltake,
-  ldrop, partition, partition_all, interleave, separate, splitat
+  ldrop, partition, partition_all, interleave, separate, split_at
 
 is_pos(x::Number) = x > 0
 @vectorize_1arg Number is_pos
@@ -146,7 +146,7 @@ end
 lmapcat(f::Function, its...) = lconcat(lmap(f, its...)...)
 
 function ltake(n::Integer, it)
-  n < 0 && error("n cannot be negative.")
+  n < 0 && ArgumentError("n cannot be negative.")
   TakeIterator(n, it)
 end
 
@@ -168,7 +168,7 @@ end
 Base.length(it::TakeIterator) = it.n
 
 function ldrop(n::Integer, it)
-  n < 0 && error("n cannot be negative.")
+  n < 0 && ArgumentError("n cannot be negative.")
   DropIterator(n, it)
 end
 
@@ -192,12 +192,12 @@ Base.done(it::DropIterator, state) = done(it.it, state)
 Base.next(it::DropIterator, state) = next(it.it, state)
 
 function partition{T}(n::Integer, a::AbstractArray{T,1})
-  n < 0 && error("n cannot be negative.")
+  n < 1 && ArgumentError("n must be a positive integer.")
   [a[(1:n)+((i-1)*n)] for i in 1:div(length(a), n)]
 end
 
 function partition(n::Integer, it)
-  n < 0 && error("n cannot be negative.")
+  n < 1 && ArgumentError("n must be a positive integer.")
   PartitionIterator(n, it)
 end
 
@@ -229,7 +229,7 @@ function Base.next(it::PartitionIterator, state::Dict{Symbol,Any})
 end
 
 function partition_all{T}(n::Integer, a::AbstractArray{T,1})
-  n < 0 && error("n cannot be negative.")
+  n < 1 && ArgumentError("n must be a positive integer.")
   res = Array(typeof(a), iceil(length(a)/n))
   psize = div(length(a), n)
   for i in 1:psize
@@ -240,7 +240,7 @@ function partition_all{T}(n::Integer, a::AbstractArray{T,1})
 end
 
 function partition_all(n::Integer, it)
-  n < 0 && error("n cannot be negative.")
+  n < 1 && ArgumentError("n must be a positive integer.")
   PartitionAllIterator(n, it)
 end
 
@@ -315,12 +315,14 @@ function Base.next(it::InterleaveIterator, state::Dict{Symbol,Any})
 end
 
 function separate{T}(n::Integer, a::AbstractArray{T,1})
+  n < 1 && ArgumentError("n must be a positive integer.")
   map(1:n) do i
     a[Bool[(ind-1)%n == (i-1) for ind in 1:endof(a)]]
   end
 end
 
 function separate(n::Integer, it)
+  n < 1 && ArgumentError("n must be a positive integer.")
   map(1:n) do i
     enumerate(it) |>
     (c -> lfilter(arg -> (arg[1]-1) % n == (i-1), c)) |>
@@ -328,4 +330,12 @@ function separate(n::Integer, it)
   end
 end
 
-# function splitat(n::integer, 
+function split_at{T}(n::Integer, a::AbstractArray{T,1})
+  n < 0 && ArgumentError("n cannot be negative.")
+  typeof(a)[a[1:n], a[n+1:end]]
+end
+
+function split_at(n::Integer, it)
+  n < 0 && ArgumentError("n cannot be negative.")
+  (ltake(n, it), ldrop(n, it))
+end
