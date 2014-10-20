@@ -1,8 +1,8 @@
 module Cav
 
-export donothing, ref
+export do_nothing, ref, deref, set!, swap!
 
-donothing() = nothing
+do_nothing() = nothing
 
 type Ref{T}
   value::T
