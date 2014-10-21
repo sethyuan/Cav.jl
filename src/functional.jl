@@ -1,3 +1,5 @@
+import Base: start, done, next, length, eltype
+
 export
   is_pos, is_neg, is_zero, is_one, complement, comp, constantly,
   inc, dec, juxt, iterate, mapcat, lmap, lfilter, lconcat, lmapcat, take,
@@ -51,11 +53,11 @@ immutable IterateIterator{T}
   x::T
 end
 
-Base.start{T}(it::IterateIterator{T}) = (it.x, false)
+start{T}(it::IterateIterator{T}) = (it.x, false)
 
-Base.done{T}(::IterateIterator{T}, ::(T,Bool)) = false
+done{T}(::IterateIterator{T}, ::(T,Bool)) = false
 
-function Base.next{T}(it::IterateIterator{T}, state::(T,Bool))
+function next{T}(it::IterateIterator{T}, state::(T,Bool))
   x, apply = state
   apply ?
     let x = it.f(x)
@@ -64,7 +66,7 @@ function Base.next{T}(it::IterateIterator{T}, state::(T,Bool))
     (x, (x, true))
 end
 
-Base.eltype{T}(it::IterateIterator{T}) = T
+eltype{T}(it::IterateIterator{T}) = T
 
 mapcat(f::Function, its...) = vcat(map(f, its...)...)
 
@@ -75,15 +77,15 @@ immutable MapIterator
   its
 end
 
-Base.start(it::MapIterator) = map(start, it.its)
+start(it::MapIterator) = map(start, it.its)
 
-function Base.done(it::MapIterator, state::(Any...))
+function done(it::MapIterator, state::(Any...))
   n = reduce(+, map(done, it.its, state))
   0 < n < length(it.its) && error("lengths of collections don't match.")
   n != 0
 end
 
-function Base.next(it::MapIterator, state::(Any...))
+function next(it::MapIterator, state::(Any...))
   values, state = map(next, it.its, state) |> vs -> map(tuple, vs...)
   (it.f(values...), state)
 end
@@ -95,10 +97,10 @@ immutable FilterIterator
   it
 end
 
-Base.start(it::FilterIterator) =
+start(it::FilterIterator) =
   (Symbol=>Any)[:value=>nothing, :state=>start(it.it)]
 
-function Base.done(it::FilterIterator, state::Dict{Symbol,Any})
+function done(it::FilterIterator, state::Dict{Symbol,Any})
   s = state[:state]
   while !done(it.it, s)
     v, s = next(it.it, s)
@@ -111,7 +113,7 @@ function Base.done(it::FilterIterator, state::Dict{Symbol,Any})
   true
 end
 
-Base.next(it::FilterIterator, state::Dict{Symbol,Any}) = (state[:value], state)
+next(it::FilterIterator, state::Dict{Symbol,Any}) = (state[:value], state)
 
 lconcat(its...) = ConcatIterator(its)
 
@@ -119,10 +121,10 @@ immutable ConcatIterator
   its
 end
 
-Base.start(it::ConcatIterator) =
+start(it::ConcatIterator) =
   (Symbol=>Any)[:nth=>1, :state=>start(it.its[1])]
 
-function Base.done(it::ConcatIterator, state::Dict{Symbol,Any})
+function done(it::ConcatIterator, state::Dict{Symbol,Any})
   nth, s = state[:nth], state[:state]
   len = length(it.its)
   partial_done = done(it.its[nth], s)
@@ -136,7 +138,7 @@ function Base.done(it::ConcatIterator, state::Dict{Symbol,Any})
   nth > len
 end
 
-function Base.next(it::ConcatIterator, state::Dict{Symbol,Any})
+function next(it::ConcatIterator, state::Dict{Symbol,Any})
   nth, s = state[:nth], state[:state]
   v, s = next(it.its[nth], s)
   state[:state] = s
@@ -155,17 +157,17 @@ immutable TakeIterator
   it
 end
 
-Base.start(it::TakeIterator) = (1, start(it.it))
+start(it::TakeIterator) = (1, start(it.it))
 
-Base.done(it::TakeIterator, state::(Integer,Any)) =
+done(it::TakeIterator, state::(Integer,Any)) =
   state[1] > it.n || done(it.it, state[2])
 
-function Base.next(it::TakeIterator, state::(Integer,Any))
+function next(it::TakeIterator, state::(Integer,Any))
   v, s = next(it.it, state[2])
   (v, (inc(state[1]), s))
 end
 
-Base.length(it::TakeIterator) = it.n
+length(it::TakeIterator) = it.n
 
 function drop(n::Integer, it)
   n < 0 && ArgumentError("n cannot be negative.")
@@ -177,7 +179,7 @@ immutable DropIterator
   it
 end
 
-function Base.start(it::DropIterator)
+function start(it::DropIterator)
   state = start(it.it)
   for i in 1:it.n
     if !done(it.it, state)
@@ -187,9 +189,9 @@ function Base.start(it::DropIterator)
   state
 end
 
-Base.done(it::DropIterator, state) = done(it.it, state)
+done(it::DropIterator, state) = done(it.it, state)
 
-Base.next(it::DropIterator, state) = next(it.it, state)
+next(it::DropIterator, state) = next(it.it, state)
 
 function partition{T}(n::Integer, a::AbstractArray{T,1})
   n < 1 && ArgumentError("n must be a positive integer.")
@@ -206,10 +208,10 @@ immutable PartitionIterator
   it
 end
 
-Base.start(it::PartitionIterator) =
+start(it::PartitionIterator) =
   (Symbol=>Any)[:value=>cell(it.n), :state=>start(it.it)]
 
-function Base.done(it::PartitionIterator, state::Dict{Symbol,Any})
+function done(it::PartitionIterator, state::Dict{Symbol,Any})
   value, s = state[:value], state[:state]
   for i in 1:it.n
     if done(it.it, s)
@@ -222,7 +224,7 @@ function Base.done(it::PartitionIterator, state::Dict{Symbol,Any})
   return false
 end
 
-function Base.next(it::PartitionIterator, state::Dict{Symbol,Any})
+function next(it::PartitionIterator, state::Dict{Symbol,Any})
   value = state[:value]
   state[:value] = cell(it.n)
   (value, state)
@@ -249,14 +251,14 @@ immutable PartitionAllIterator
   it
 end
 
-function Base.start(it::PartitionAllIterator)
+function start(it::PartitionAllIterator)
   state = start(it.it)
   (done(it.it, state), state)
 end
 
-Base.done(it::PartitionAllIterator, state::(Bool,Any)) = state[1]
+done(it::PartitionAllIterator, state::(Bool,Any)) = state[1]
 
-function Base.next(it::PartitionAllIterator, state::(Bool,Any))
+function next(it::PartitionAllIterator, state::(Bool,Any))
   value = Any[]
   _, state = state
   for i in 1:it.n
@@ -290,10 +292,10 @@ immutable InterleaveIterator
   its
 end
 
-Base.start(it::InterleaveIterator) =
+start(it::InterleaveIterator) =
   (Symbol=>Any)[:cind=>0, :donecheck=>true, :cstates=>map(start, [it.its...])]
 
-function Base.done(it::InterleaveIterator, state::Dict{Symbol,Any})
+function done(it::InterleaveIterator, state::Dict{Symbol,Any})
   if state[:donecheck]
     state[:donecheck] = false
     reduce(+, map(done, it.its, state[:cstates])) > 0
@@ -302,7 +304,7 @@ function Base.done(it::InterleaveIterator, state::Dict{Symbol,Any})
   end
 end
 
-function Base.next(it::InterleaveIterator, state::Dict{Symbol,Any})
+function next(it::InterleaveIterator, state::Dict{Symbol,Any})
   i = state[:cind] + 1
   v, cstate = next(it.its[i], state[:cstates][i])
   ncind = i % length(it.its)
