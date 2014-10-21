@@ -1,7 +1,7 @@
 export
   is_pos, is_neg, is_zero, is_one, complement, comp, constantly,
-  inc, dec, juxt, iterate, mapcat, lmap, lfilter, lconcat, lmapcat, ltake,
-  ldrop, partition, partition_all, interleave, separate, split_at
+  inc, dec, juxt, iterate, mapcat, lmap, lfilter, lconcat, lmapcat, take,
+  drop, partition, partition_all, interleave, separate, split_at
 
 is_pos(x::Number) = x > 0
 @vectorize_1arg Number is_pos
@@ -145,7 +145,7 @@ end
 
 lmapcat(f::Function, its...) = lconcat(lmap(f, its...)...)
 
-function ltake(n::Integer, it)
+function take(n::Integer, it)
   n < 0 && ArgumentError("n cannot be negative.")
   TakeIterator(n, it)
 end
@@ -167,7 +167,7 @@ end
 
 Base.length(it::TakeIterator) = it.n
 
-function ldrop(n::Integer, it)
+function drop(n::Integer, it)
   n < 0 && ArgumentError("n cannot be negative.")
   DropIterator(n, it)
 end
@@ -337,5 +337,5 @@ end
 
 function split_at(n::Integer, it)
   n < 0 && ArgumentError("n cannot be negative.")
-  (ltake(n, it), ldrop(n, it))
+  (take(n, it), drop(n, it))
 end
