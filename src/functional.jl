@@ -198,6 +198,16 @@ function partition{T}(n::Integer, a::AbstractArray{T,1})
   [a[(1:n)+((i-1)*n)] for i in 1:div(length(a), n)]
 end
 
+function partition{T}(n::Integer, dim::Integer, a::AbstractArray{T,2})
+  n < 1 && ArgumentError("n must be a positive integer.")
+  !(1 <= dim <= 2) && ArgumentError("dim must be either 1 or 2.")
+  if dim == 1
+    [a[(1:n)+((i-1)*n),:] for i in 1:div(size(a, dim), n)]
+  else
+    [a[:,(1:n)+((i-1)*n)] for i in 1:div(size(a, dim), n)]
+  end
+end
+
 function partition(n::Integer, it)
   n < 1 && ArgumentError("n must be a positive integer.")
   PartitionIterator(n, it)
