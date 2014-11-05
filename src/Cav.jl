@@ -9,9 +9,9 @@ type Ref{T}
 end
 
 ref(x) = Ref(x)
-deref{T}(x::Ref{T}) = x.value
+deref(x::Ref) = x.value
 set!{T}(x::Ref{T}, v::T) = (x.value = v; x)
-swap!{T}(x::Ref{T}, f::Function) = (x.value = f(x.value); x)
+swap!(x::Ref, f::Function) = (x.value = f(x.value); x)
 
 include("functional.jl")
 include("algo.jl")

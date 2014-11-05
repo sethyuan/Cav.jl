@@ -1,11 +1,11 @@
 export count_inv
 
-count_inv{T<:Number}(a::AbstractArray{T,1}) = count_inv!(copy(a))
+count_inv{T<:Number}(a::AbstractVector{T}) = count_inv!(copy(a))
 
-count_inv!{T<:Number}(a::AbstractArray{T,1}) = count_inv!(a, 1, length(a))
+count_inv!{T<:Number}(a::AbstractVector{T}) = count_inv!(a, 1, length(a))
 
 function count_inv!{T<:Number}(
-    a::AbstractArray{T,1}, lo::Integer, hi::Integer, t=similar(a, T, div(length(a), 2)))
+    a::AbstractVector{T}, lo::Integer, hi::Integer, t=similar(a, T, div(length(a), 2)))
   if lo < hi
     mid = (hi+lo) >>> 1
     lcount = count_inv!(a, lo, mid, t)

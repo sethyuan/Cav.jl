@@ -32,8 +32,8 @@ dec(x::Number) = x - one(x)
 @vectorize_1arg Number dec
 
 juxt(f::Function, g::Function) = x -> (f(x), g(x))
-juxt(f::Function, g::Function, fs::Function...) =
-  x -> map(f -> f(x), tuple(f, g, fs...))
+juxt(f::Function, g::Function, h::Function) = x -> (f(x), g(x), h(x))
+juxt(fs::Function...) = x -> map(f -> f(x), fs)
 
 function iterate(n::Integer, f::Function, x)
   n < 1 && ArgumentError("n must be a positive integer.")
@@ -53,9 +53,9 @@ immutable IterateIterator{T}
   x::T
 end
 
-start{T}(it::IterateIterator{T}) = (it.x, false)
+start(it::IterateIterator) = (it.x, false)
 
-done{T}(::IterateIterator{T}, ::(T,Bool)) = false
+done(::IterateIterator, ::Any) = false
 
 function next{T}(it::IterateIterator{T}, state::(T,Bool))
   x, apply = state
@@ -193,12 +193,12 @@ done(it::DropIterator, state) = done(it.it, state)
 
 next(it::DropIterator, state) = next(it.it, state)
 
-function partition{T}(n::Integer, a::AbstractArray{T,1})
+function partition{T}(n::Integer, a::AbstractVector{T})
   n < 1 && ArgumentError("n must be a positive integer.")
   [a[(1:n)+((i-1)*n)] for i in 1:div(length(a), n)]
 end
 
-function partition{T}(n::Integer, dim::Integer, a::AbstractArray{T,2})
+function partition{T}(n::Integer, dim::Integer, a::AbstractMatrix{T})
   n < 1 && ArgumentError("n must be a positive integer.")
   !(1 <= dim <= 2) && ArgumentError("dim must be either 1 or 2.")
   if dim == 1
@@ -240,7 +240,7 @@ function next(it::PartitionIterator, state::Dict{Symbol,Any})
   (value, state)
 end
 
-function partition_all{T}(n::Integer, a::AbstractArray{T,1})
+function partition_all{T}(n::Integer, a::AbstractVector{T})
   n < 1 && ArgumentError("n must be a positive integer.")
   res = Array(typeof(a), iceil(length(a)/n))
   psize = div(length(a), n)
@@ -281,9 +281,9 @@ function next(it::PartitionAllIterator, state::(Bool,Any))
   (value, (false, state))
 end
 
-interleave{T}(a::AbstractArray{T,1}) = a
+interleave{T}(a::AbstractVector{T}) = a
 
-function interleave{T}(as::AbstractArray{T,1}...)
+function interleave{T}(as::AbstractVector{T}...)
   count = length(as)
   minlen = minimum(map(length, as))
   res = Array(T, count * minlen)
@@ -326,7 +326,7 @@ function next(it::InterleaveIterator, state::Dict{Symbol,Any})
   (v, state)
 end
 
-function separate{T}(n::Integer, a::AbstractArray{T,1})
+function separate{T}(n::Integer, a::AbstractVector{T})
   n < 1 && ArgumentError("n must be a positive integer.")
   map(1:n) do i
     a[Bool[(ind-1)%n == (i-1) for ind in 1:endof(a)]]
@@ -342,7 +342,7 @@ function separate(n::Integer, it)
   end
 end
 
-function split_at{T}(n::Integer, a::AbstractArray{T,1})
+function split_at{T}(n::Integer, a::AbstractVector{T})
   n < 0 && ArgumentError("n cannot be negative.")
   typeof(a)[a[1:n], a[n+1:end]]
 end
